@@ -3,42 +3,65 @@
 import sys
 import tomllib
 
-from cargo import CargoError, get_direct_dependencies
+from cargo import CargoError, CargoRepository
 from config import load_config, validate_config
+from graph import (
+    GraphError,
+    TestRepository,
+    build_dependency_graph,
+)
 
 
-def print_dependencies(package_name, version, dependencies):
-    """Выводит прямые зависимости пакета."""
-    print(f"Прямые зависимости {package_name} {version}:")
+def _config_path(arguments):
+    """Возвращает путь к конфигурации."""
+    if arguments:
+        return arguments[0]
 
-    if not dependencies:
-        print("Зависимости не найдены")
-        return
-
-    for dependency in dependencies:
-        details = dependency["kind"]
-
-        if dependency["optional"]:
-            details += ", optional"
-
-        name = dependency["name"]
-        requirement = dependency["requirement"]
-        print(f"- {name} {requirement} ({details})")
+    return "config.toml"
 
 
-def main():
-    """Загружает настройки и получает зависимости.
-
-    Returns:
-        int: Код 0 при успехе или 1 при ошибке.
-    """
-    try:
-        config = load_config("config.toml")
-        validate_config(config)
-        dependencies = get_direct_dependencies(
-            config["package_name"],
-            config["version"],
+def _create_repository(config):
+    """Создаёт настоящий или тестовый репозиторий."""
+    if config["test_mode"]:
+        repository = TestRepository.load(
             config["repository"],
+        )
+        return repository, ""
+
+    repository = CargoRepository(
+        config["repository"],
+    )
+    return repository, config["version"]
+
+
+def print_graph(graph):
+    """Выводит граф зависимостей."""
+    for package in sorted(graph):
+        dependencies = graph[package]
+
+        if dependencies:
+            text = ", ".join(dependencies)
+        else:
+            text = "-"
+
+        print(f"{package} -> {text}")
+
+
+def main(argv=None):
+    """Загружает настройки и строит граф зависимостей."""
+    arguments = sys.argv[1:] if argv is None else argv
+    path = _config_path(arguments)
+
+    try:
+        config = load_config(path)
+        validate_config(config)
+        repository, version = _create_repository(config)
+        graph = build_dependency_graph(
+            config["package_name"],
+            version,
+            repository,
+            config["max_depth"],
+            config["filter_substring"],
         )
     except OSError as error:
         print(f"Ошибка чтения файла: {error}", file=sys.stderr)
@@ -49,15 +72,11 @@ def main():
     except ValueError as error:
         print(f"Ошибка настройки: {error}", file=sys.stderr)
         return 1
-    except CargoError as error:
-        print(f"Ошибка Cargo: {error}", file=sys.stderr)
+    except (CargoError, GraphError) as error:
+        print(f"Ошибка графа: {error}", file=sys.stderr)
         return 1
 
-    print_dependencies(
-        config["package_name"],
-        config["version"],
-        dependencies,
-    )
+    print_graph(graph)
     return 0
 
 

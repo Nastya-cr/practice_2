@@ -3,6 +3,7 @@
 import json
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from versioning import select_version
 
 
 ONE_LETTER = 1
@@ -136,3 +137,77 @@ def get_direct_dependencies(
         dependencies,
         key=lambda item: (item["name"], item["kind"]),
     )
+
+class CargoRepository:
+    """Предоставляет зависимости из Cargo-индекса."""
+
+    def __init__(self, repository):
+        """Сохраняет адрес репозитория и создаёт кеш."""
+        self.repository = repository
+        self.cache = {}
+
+    def _get_versions(self, package_name):
+        """Получает все версии пакета."""
+        key = package_name.lower()
+
+        if key not in self.cache:
+            url = _build_url(
+                self.repository,
+                package_name,
+            )
+            text = _download_index(url)
+            self.cache[key] = _parse_versions(text)
+
+        return self.cache[key]
+
+    def _resolve_version(self, package_name, requirement):
+        """Выбирает подходящую версию зависимости."""
+        versions = self._get_versions(package_name)
+        version = select_version(versions, requirement)
+
+        if version is None:
+            message = (
+                f"для {package_name} не найдена версия "
+                f"по требованию {requirement}"
+            )
+            raise CargoError(message)
+
+        return version
+
+    def get_dependencies(self, package_name, version):
+        """Возвращает зависимости пакета с версиями."""
+        versions = self._get_versions(package_name)
+        package = _find_version(versions, version)
+        dependencies = []
+        added = set()
+
+        for dependency in package.get("deps", []):
+            if dependency.get("kind") == "dev":
+                continue
+
+            name = (
+                dependency.get("package")
+                or dependency.get("name")
+            )
+            requirement = dependency.get("req", "*")
+            resolved = self._resolve_version(
+                name,
+                requirement,
+            )
+            key = (name, resolved)
+
+            if key in added:
+                continue
+
+            added.add(key)
+            dependencies.append(
+                {
+                    "name": name,
+                    "version": resolved,
+                }
+            )
+
+        return sorted(
+            dependencies,
+            key=lambda item: item["name"],
+        )

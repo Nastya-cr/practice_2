@@ -2,4 +2,4 @@
 set -eu
 
 cd "$(dirname "$0")"
-exec python3 src/main.py
+exec python3 src/main.py "$@"
