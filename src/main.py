@@ -9,6 +9,7 @@ from graph import (
     GraphError,
     TestRepository,
     build_dependency_graph,
+    find_reverse_dependencies,
 )
 
 
@@ -63,6 +64,13 @@ def main(argv=None):
             config["max_depth"],
             config["filter_substring"],
         )
+        reverse_dependencies = None
+
+        if config["reverse_mode"]:
+            reverse_dependencies = find_reverse_dependencies(
+                graph,
+                config["reverse_package"],
+            )
     except OSError as error:
         print(f"Ошибка чтения файла: {error}", file=sys.stderr)
         return 1
@@ -77,8 +85,29 @@ def main(argv=None):
         return 1
 
     print_graph(graph)
+
+    if reverse_dependencies is not None:
+        print_reverse_dependencies(
+            config["reverse_package"],
+            reverse_dependencies,
+        )
+
     return 0
 
+def print_reverse_dependencies(
+    package_name,
+    dependencies,
+):
+    """Выводит обратные зависимости пакета."""
+    print()
+    print(f"Обратные зависимости {package_name}:")
+
+    if not dependencies:
+        print("Обратных зависимостей нет")
+        return
+
+    for dependency in dependencies:
+        print(f"- {dependency}")
 
 if __name__ == "__main__":
     raise SystemExit(main())

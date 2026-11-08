@@ -6,7 +6,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from graph import build_dependency_graph
+from graph import (
+    build_dependency_graph,
+    find_reverse_dependencies,
+)
+
 
 
 class FakeRepository:
@@ -95,7 +99,21 @@ class GraphTest(unittest.TestCase):
         )
 
         self.assertEqual(graph["A"], ["B"])
+    def test_reverse_dependencies(self):
+        """Проверяет поиск обратных зависимостей."""
+        graph = {
+            "A": ["B", "C"],
+            "B": ["D"],
+            "C": ["D"],
+            "D": [],
+        }
 
+        dependencies = find_reverse_dependencies(
+            graph,
+            "D",
+        )
+
+        self.assertEqual(dependencies, ["B", "C"])
 
 if __name__ == "__main__":
     unittest.main()

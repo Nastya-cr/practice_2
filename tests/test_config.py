@@ -25,6 +25,8 @@ class ConfigTest(unittest.TestCase):
             "ascii_tree": True,
             "max_depth": 3,
             "filter_substring": "",
+            "reverse_mode": False,
+            "reverse_package": "",
         }
 
     def test_load_config(self):
@@ -48,6 +50,7 @@ class ConfigTest(unittest.TestCase):
             "ascii_tree": "true",
             "max_depth": 0,
             "filter_substring": None,
+
         }
 
         for name in invalid_values:

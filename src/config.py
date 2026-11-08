@@ -78,4 +78,14 @@ def validate_config(config):
     _get_text(config, "version")
     _get_bool(config, "ascii_tree")
     _get_depth(config)
-    _get_text(config, "filter_substring", allow_empty=True)
+    _get_text(
+        config,
+        "filter_substring",
+        allow_empty=True,
+    )
+    reverse_mode = _get_bool(config, "reverse_mode")
+    _get_text(
+        config,
+        "reverse_package",
+        allow_empty=not reverse_mode,
+    )

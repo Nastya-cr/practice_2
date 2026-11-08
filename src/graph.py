@@ -145,3 +145,42 @@ def build_dependency_graph(
                 )
 
     return graph
+def _package_name(node):
+    """Убирает версию из имени узла."""
+    return node.split("@", 1)[0]
+
+
+def find_reverse_dependencies(graph, package_name):
+    """Находит пакеты, зависящие от указанного пакета.
+
+    Args:
+        graph: Построенный граф зависимостей.
+        package_name: Название искомого пакета.
+
+    Returns:
+        list: Найденные обратные зависимости.
+
+    Raises:
+        GraphError: Если пакет отсутствует в графе.
+    """
+    targets = {
+        node
+        for node in graph
+        if _package_name(node) == package_name
+    }
+
+    if not targets:
+        raise GraphError(
+            f"пакет {package_name} отсутствует в графе"
+        )
+
+    reverse_dependencies = set()
+
+    for parent, dependencies in graph.items():
+        if any(
+            child in targets
+            for child in dependencies
+        ):
+            reverse_dependencies.add(parent)
+
+    return sorted(reverse_dependencies)
