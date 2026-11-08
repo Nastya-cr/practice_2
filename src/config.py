@@ -16,8 +16,10 @@ def load_config(path):
     Returns:
         dict: Настройки программы.
     """
-    with open(path, "rb") as file:
-        return tomllib.load(file)
+    file = open(path, "rb")
+    config = tomllib.load(file)
+    file.close()
+    return config
 
 
 def _get_text(config, name, allow_empty=False):
