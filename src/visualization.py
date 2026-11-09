@@ -1,4 +1,7 @@
-"""Создание Mermaid-диаграммы и ASCII-дерева."""
+"""Создание Mermaid-диаграммы, ASCII-дерева и PNG."""
+
+import subprocess
+from pathlib import Path
 
 
 class VisualizationError(Exception):
@@ -48,6 +51,39 @@ def to_mermaid(graph):
             )
 
     return "\n".join(lines)
+
+
+def save_png(graph, path):
+    """Сохраняет граф в PNG через Graphviz."""
+    identifiers = _node_ids(graph)
+    lines = ["digraph dependencies {", "    node [shape=box];"]
+
+    for node, identifier in identifiers.items():
+        label = _escape_label(node.replace("\\", "\\\\"))
+        label = label.replace("\r", "\\r").replace("\n", "\\n")
+        lines.append(f'    {identifier} [label="{label}"];')
+
+    for parent, dependencies in graph.items():
+        for child in dependencies:
+            lines.append(f"    {identifiers[parent]} -> {identifiers[child]};")
+
+    lines.append("}")
+    try:
+        result = subprocess.run(
+            ["dot", "-Tpng"],
+            input="\n".join(lines).encode("utf-8"),
+            capture_output=True,
+            check=True,
+        )
+    except FileNotFoundError as error:
+        raise VisualizationError(
+            "для сохранения PNG установите Graphviz (brew install graphviz на macOS)"
+        ) from error
+    except subprocess.CalledProcessError as error:
+        message = error.stderr.decode("utf-8", errors="replace").strip()
+        raise VisualizationError(f"Graphviz не смог создать PNG: {message}") from error
+
+    Path(path).write_bytes(result.stdout)
 
 
 def _push_children(

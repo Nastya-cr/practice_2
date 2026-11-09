@@ -13,6 +13,7 @@ from graph import (
 )
 from visualization import (
     VisualizationError,
+    save_png,
     to_ascii_tree,
     to_mermaid,
 )
@@ -157,6 +158,13 @@ def main(argv=None):
         return 1
 
     _print_result(config, result)
+    png_path = "graph.png"
+    try:
+        save_png(result[0], png_path)
+    except (OSError, VisualizationError) as error:
+        print(f"PNG не сохранён: {error}", file=sys.stderr)
+    else:
+        print(f"\nPNG сохранён: {png_path}")
     return 0
 
 
