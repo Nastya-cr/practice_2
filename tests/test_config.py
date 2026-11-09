@@ -15,9 +15,10 @@ PROJECT = Path(__file__).parents[1]
 class ConfigTest(unittest.TestCase):
     """Проверяет настройки программы."""
 
-    def setUp(self):
-        """Создаёт правильные настройки перед каждым тестом."""
-        self.config = {
+    @staticmethod
+    def make_config():
+        """Создаёт правильные настройки для теста."""
+        return {
             "package_name": "serde",
             "repository": "https://index.crates.io/",
             "test_mode": False,
@@ -37,7 +38,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_valid_config(self):
         """Проверяет правильные настройки."""
-        result = validate_config(self.config)
+        result = validate_config(self.make_config())
         self.assertIsNone(result)
 
     def test_invalid_values(self):
@@ -55,7 +56,7 @@ class ConfigTest(unittest.TestCase):
 
         for name in invalid_values:
             with self.subTest(name=name):
-                config = self.config.copy()
+                config = self.make_config()
                 config[name] = invalid_values[name]
 
                 with self.assertRaises(ValueError):
@@ -63,18 +64,20 @@ class ConfigTest(unittest.TestCase):
 
     def test_invalid_repository_url(self):
         """Проверяет неправильный URL репозитория."""
-        self.config["repository"] = "not-a-url"
+        config = self.make_config()
+        config["repository"] = "not-a-url"
 
         with self.assertRaises(ValueError):
-            validate_config(self.config)
+            validate_config(config)
 
     def test_missing_test_repository(self):
         """Проверяет отсутствие тестового репозитория."""
-        self.config["test_mode"] = True
-        self.config["repository"] = "missing.txt"
+        config = self.make_config()
+        config["test_mode"] = True
+        config["repository"] = "missing.txt"
 
         with self.assertRaises(ValueError):
-            validate_config(self.config)
+            validate_config(config)
 
 
 if __name__ == "__main__":

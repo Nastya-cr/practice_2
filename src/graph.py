@@ -81,6 +81,15 @@ def _node_name(package_name, version):
     return package_name
 
 
+def _iter_dependencies(dependencies, filter_value):
+    """Возвращает зависимости в порядке добавления в стек DFS."""
+    for dependency in reversed(dependencies):
+        name = dependency["name"]
+        if filter_value and filter_value in name.lower():
+            continue
+        yield name, dependency["version"]
+
+
 def build_dependency_graph(
     package_name,
     version,
@@ -92,13 +101,7 @@ def build_dependency_graph(
     graph = {}
     visited = set()
     filter_value = filter_substring.lower()
-    stack = [
-        (
-            package_name,
-            version,
-            ROOT_DEPTH,
-        )
-    ]
+    stack = [(package_name, version, ROOT_DEPTH)]
 
     while stack:
         name, current_version, depth = stack.pop()
@@ -113,38 +116,20 @@ def build_dependency_graph(
         if depth >= max_depth:
             continue
 
-        dependencies = repository.get_dependencies(
-            name,
-            current_version,
-        )
-
-        for dependency in reversed(dependencies):
-            child_name = dependency["name"]
-
-            if (
-                filter_value
-                and filter_value in child_name.lower()
-            ):
-                continue
-
-            child_version = dependency["version"]
-            child = _node_name(
-                child_name,
-                child_version,
-            )
+        dependencies = repository.get_dependencies(name, current_version)
+        for child_name, child_version in _iter_dependencies(
+            dependencies, filter_value,
+        ):
+            child = _node_name(child_name, child_version)
             graph[node].append(child)
             graph.setdefault(child, [])
 
             if child not in visited:
-                stack.append(
-                    (
-                        child_name,
-                        child_version,
-                        depth + NEXT_DEPTH,
-                    )
-                )
+                stack.append((child_name, child_version, depth + NEXT_DEPTH))
 
     return graph
+
+
 def _package_name(node):
     """Убирает версию из имени узла."""
     return node.split("@", 1)[0]

@@ -77,11 +77,14 @@ def save_png(graph, path):
         )
     except FileNotFoundError as error:
         raise VisualizationError(
-            "для сохранения PNG установите Graphviz (brew install graphviz на macOS)"
+            "для сохранения PNG установите Graphviz "
+            "(brew install graphviz на macOS)"
         ) from error
     except subprocess.CalledProcessError as error:
         message = error.stderr.decode("utf-8", errors="replace").strip()
-        raise VisualizationError(f"Graphviz не смог создать PNG: {message}") from error
+        raise VisualizationError(
+            f"Graphviz не смог создать PNG: {message}"
+        ) from error
 
     Path(path).write_bytes(result.stdout)
 
@@ -113,41 +116,20 @@ def _push_children(
 
 
 def to_ascii_tree(graph, root):
-    """Создаёт ASCII-дерево без рекурсии.
-
-    Args:
-        graph: Граф зависимостей.
-        root: Корневой пакет.
-
-    Returns:
-        str: Дерево зависимостей.
-
-    Raises:
-        VisualizationError: Если корень отсутствует.
-    """
+    """Создаёт ASCII-дерево от заданного корня без рекурсии."""
     if root not in graph:
-        raise VisualizationError(
-            f"корневой пакет {root} отсутствует"
-        )
+        raise VisualizationError(f"корневой пакет {root} отсутствует")
 
     lines = [root]
     stack = []
-    _push_children(
-        stack,
-        graph,
-        root,
-        "",
-        {root},
-    )
+    _push_children(stack, graph, root, "", {root})
 
     while stack:
         node, prefix, is_last, path = stack.pop()
         branch = "└── " if is_last else "├── "
 
         if node in path:
-            lines.append(
-                f"{prefix}{branch}{node} (цикл)"
-            )
+            lines.append(f"{prefix}{branch}{node} (цикл)")
             continue
 
         lines.append(f"{prefix}{branch}{node}")
@@ -156,12 +138,6 @@ def to_ascii_tree(graph, root):
         next_prefix += "    " if is_last else "│   "
         next_path = path | {node}
 
-        _push_children(
-            stack,
-            graph,
-            node,
-            next_prefix,
-            next_path,
-        )
+        _push_children(stack, graph, node, next_prefix, next_path)
 
     return "\n".join(lines)
